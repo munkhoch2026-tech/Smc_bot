@@ -1,4 +1,4 @@
+python-binance
 requests
-python-telegram-bot
-binance-connector
 pandas
+python-telegram-bot
