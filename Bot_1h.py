@@ -10,8 +10,8 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8737624173:AAHNEb0nmuGLFZbypfIlpQW
 CHAT_ID = os.getenv("CHAT_ID", "7837817666")
 
 # ===== BINANCE TESTNET API ТОХИРГОО (Railway-ийн Variables-аас уншина) =====
-BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "NgEoaa7VidwUR2oksfcnTRFks6z4UDPb3DHJVLQwF51kybrPdgOEk1X9G13jbia8")
-BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY", "ehStKDxkD192VKyOmYFn4f1VVu7RNMZ6BDGqqRYNiVez4HZSVS9EcI2KXdhrsaFjY")
+BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "En7fAi4G1xQFG17arU3weWgk8ejn2E8LxU4mMnF9oypYpFyno5nRLUJDTJ38GbYh")
+BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY", "sVFIXH6Ma0FKTx0MC5kurhltf3Lok0PZyD2OgY0w6Xa4VDGJhfgdZzkf0KZzgo7o")
 
 # Нэг арилжаанд орох дүнг энд тохируулна ($)
 TRADE_USDT_AMOUNT = 20
