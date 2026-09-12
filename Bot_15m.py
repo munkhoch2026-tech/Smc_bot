@@ -1,23 +1,22 @@
 import math
 import os
 import time
+import hmac
+import hashlib
+import urllib.parse
 import pandas as pd
 import requests
-from binance.client import Client
 
 # ===== TELEGRAM ТОХИРГОО =====
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8737624173:AAHNEb0nmuGLFZbypfIlpQWfyZ8KzeFbGJ4")
-CHAT_ID = os.getenv("CHAT_ID", "7837817666")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8737624173:AAHNEb0nmuGLFZbypfIlpQWfyZ8KzeFbGJ4").strip()
+CHAT_ID = os.getenv("CHAT_ID", "7837817666").strip()
 
-# ===== BINANCE TESTNET API ТОХИРГОО =====
-BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "En7fAi4G1xQFG17arU3weWgk8ejn2E8LxU4mMnF9oypYpFyno5nRLUJDTJ38GbYh")
-BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY", "sVFIXH6Ma0FKTx0MC5kurhltf3Lok0PZyD2OgY0w6Xa4VDGJhfgdZzkf0KZzgo7o")
+# ===== BINANCE SPOT TESTNET API ТОХИРГОО =====
+BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "En7fAi4G1xQFG17arU3weWgk8ejn2E8LxU4mMnF9oypYpFyno5nRLUJDTJ38GbYh").strip()
+BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY", "sVFIXH6Ma0FKTx0MC5kurhltf3Lok0PZyD2OgY0w6Xa4VDGJhfgdZzkf0KZzgo7o").strip()
 
+BASE_URL = "https://testnet.binance.vision"
 TRADE_USDT_AMOUNT = 20
-
-# Spot Testnet URL-ийг албан ёсоор зааж өгнө
-client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY, testnet=True)
-client.API_URL = 'https://testnet.binance.vision/api'
 
 def send_telegram_msg(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -29,6 +28,15 @@ def send_telegram_msg(msg):
 
 def fmt(val):
     return f"{val:.4f}" if val < 10 else f"{val:.2f}"
+
+def sign_query(params, secret_key):
+    query_string = urllib.parse.urlencode(params)
+    signature = hmac.new(
+        secret_key.encode('utf-8'),
+        query_string.encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+    return f"{query_string}&signature={signature}"
 
 class RobustAutoSMCBot:
     def __init__(self, symbols=["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "AVAXUSDT", "NEARUSDT"], interval="15m"):
@@ -42,7 +50,7 @@ class RobustAutoSMCBot:
 
     def get_symbol_info(self, symbol):
         try:
-            url = f"https://testnet.binance.vision/api/v3/exchangeInfo?symbol={symbol}"
+            url = f"{BASE_URL}/api/v3/exchangeInfo?symbol={symbol}"
             resp = requests.get(url, timeout=5).json()
             symbol_info = resp['symbols'][0]
             lot_size = next(f for f in symbol_info['filters'] if f['filterType'] == 'LOT_SIZE')
@@ -53,7 +61,7 @@ class RobustAutoSMCBot:
             return None, None
 
     def get_klines(self, symbol, limit=100):
-        url = f"https://testnet.binance.vision/api/v3/klines?symbol={symbol}&interval={self.interval}&limit={limit}"
+        url = f"{BASE_URL}/api/v3/klines?symbol={symbol}&interval={self.interval}&limit={limit}"
         try:
             resp = requests.get(url, timeout=5).json()
             if not isinstance(resp, list):
@@ -70,6 +78,14 @@ class RobustAutoSMCBot:
             print(f"{symbol} өгөгдөл татахад алдаа:", e)
             return pd.DataFrame()
 
+    def send_signed_order(self, params):
+        url = f"{BASE_URL}/api/v3/order"
+        params['timestamp'] = int(time.time() * 1000)
+        query_str = sign_query(params, BINANCE_SECRET_KEY)
+        headers = {"X-MBX-APIKEY": BINANCE_API_KEY}
+        resp = requests.post(f"{url}?{query_str}", headers=headers, timeout=5)
+        return resp.json()
+
     def execute_safe_trade(self, symbol, entry_price, stop_loss, take_profit):
         step_size, tick_size = self.get_symbol_info(symbol)
         if not step_size or not tick_size:
@@ -80,42 +96,45 @@ class RobustAutoSMCBot:
             raw_qty = TRADE_USDT_AMOUNT / entry_price
             quantity = self.round_step(raw_qty, step_size)
 
-            # Spot Testnet-д зориулсан Market Buy Захиалга
-            buy_order = client.create_order(
-                symbol=symbol,
-                side='BUY',
-                type='MARKET',
-                quantity=quantity
-            )
-            executed_qty = float(buy_order.get('executedQty', quantity))
+            # 1. Market Buy
+            buy_params = {
+                "symbol": symbol,
+                "side": "BUY",
+                "type": "MARKET",
+                "quantity": quantity
+            }
+            buy_res = self.send_signed_order(buy_params)
 
-            if executed_qty == 0:
-                send_telegram_msg(f"❌ *{symbol}* Арилжаа нээгдсэнгүй (0 Qty).")
-                return
+            if "code" in buy_res and buy_res["code"] != 200:
+                raise Exception(f"APIError(code={buy_res['code']}): {buy_res.get('msg')}")
+
+            executed_qty = float(buy_res.get('executedQty', quantity))
 
             stop_loss_price = self.round_step(stop_loss, tick_size)
             take_profit_price = self.round_step(take_profit, tick_size)
 
-            # Take Profit Limit Order
-            client.create_order(
-                symbol=symbol,
-                side='SELL',
-                type='LIMIT',
-                timeInForce='GTC',
-                quantity=executed_qty,
-                price=str(take_profit_price)
-            )
+            # 2. Limit Sell (Take Profit)
+            tp_params = {
+                "symbol": symbol,
+                "side": "SELL",
+                "type": "LIMIT",
+                "timeInForce": "GTC",
+                "quantity": executed_qty,
+                "price": str(take_profit_price)
+            }
+            self.send_signed_order(tp_params)
 
-            # Stop Loss Limit Order
-            client.create_order(
-                symbol=symbol,
-                side='SELL',
-                type='STOP_LOSS_LIMIT',
-                timeInForce='GTC',
-                quantity=executed_qty,
-                price=str(self.round_step(stop_loss_price * 0.998, tick_size)),
-                stopPrice=str(stop_loss_price)
-            )
+            # 3. Stop Loss Limit
+            sl_params = {
+                "symbol": symbol,
+                "side": "SELL",
+                "type": "STOP_LOSS_LIMIT",
+                "timeInForce": "GTC",
+                "quantity": executed_qty,
+                "price": str(self.round_step(stop_loss_price * 0.998, tick_size)),
+                "stopPrice": str(stop_loss_price)
+            }
+            self.send_signed_order(sl_params)
 
             msg = (
                 f"⚡ *15M ТЕСТНЕТ АРИЛЖАА НЭЭГДЛЭЭ ({symbol})*\n\n"
