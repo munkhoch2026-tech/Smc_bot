@@ -15,8 +15,9 @@ BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY", "sVFIXH6Ma0FKTx0MC5kurhltf3
 
 TRADE_USDT_AMOUNT = 20
 
-# Binance Testnet Client
+# Spot Testnet URL-ийг албан ёсоор зааж өгнө
 client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY, testnet=True)
+client.API_URL = 'https://testnet.binance.vision/api'
 
 def send_telegram_msg(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
@@ -41,9 +42,11 @@ class RobustAutoSMCBot:
 
     def get_symbol_info(self, symbol):
         try:
-            info = client.get_symbol_info(symbol)
-            lot_size = next(f for f in info['filters'] if f['filterType'] == 'LOT_SIZE')
-            price_filter = next(f for f in info['filters'] if f['filterType'] == 'PRICE_FILTER')
+            url = f"https://testnet.binance.vision/api/v3/exchangeInfo?symbol={symbol}"
+            resp = requests.get(url, timeout=5).json()
+            symbol_info = resp['symbols'][0]
+            lot_size = next(f for f in symbol_info['filters'] if f['filterType'] == 'LOT_SIZE')
+            price_filter = next(f for f in symbol_info['filters'] if f['filterType'] == 'PRICE_FILTER')
             return float(lot_size['stepSize']), float(price_filter['tickSize'])
         except Exception as e:
             print(f"{symbol} info татахад алдаа:", e)
@@ -77,8 +80,14 @@ class RobustAutoSMCBot:
             raw_qty = TRADE_USDT_AMOUNT / entry_price
             quantity = self.round_step(raw_qty, step_size)
 
-            buy_order = client.order_market_buy(symbol=symbol, quantity=quantity)
-            executed_qty = float(buy_order['executedQty'])
+            # Spot Testnet-д зориулсан Market Buy Захиалга
+            buy_order = client.create_order(
+                symbol=symbol,
+                side='BUY',
+                type='MARKET',
+                quantity=quantity
+            )
+            executed_qty = float(buy_order.get('executedQty', quantity))
 
             if executed_qty == 0:
                 send_telegram_msg(f"❌ *{symbol}* Арилжаа нээгдсэнгүй (0 Qty).")
@@ -87,7 +96,17 @@ class RobustAutoSMCBot:
             stop_loss_price = self.round_step(stop_loss, tick_size)
             take_profit_price = self.round_step(take_profit, tick_size)
 
-            client.order_limit_sell(symbol=symbol, quantity=executed_qty, price=str(take_profit_price))
+            # Take Profit Limit Order
+            client.create_order(
+                symbol=symbol,
+                side='SELL',
+                type='LIMIT',
+                timeInForce='GTC',
+                quantity=executed_qty,
+                price=str(take_profit_price)
+            )
+
+            # Stop Loss Limit Order
             client.create_order(
                 symbol=symbol,
                 side='SELL',
@@ -175,7 +194,7 @@ class RobustAutoSMCBot:
 
                     self.execute_safe_trade(symbol, entry_price, stop_loss, take_profit)
 
-            time.sleep(900) # 15 минут тутамд шалгана
+            time.sleep(900)
 
 if __name__ == "__main__":
     bot = RobustAutoSMCBot(interval="15m")
