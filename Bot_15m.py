@@ -1,23 +1,23 @@
 import math
+import os
 import time
 import pandas as pd
 import requests
 from binance.client import Client
 
 # ===== TELEGRAM ТОХИРГОО =====
-TELEGRAM_TOKEN = "8737624173:AAHNEb0nmuGLFZbypfIlpQWfyZ8KzeFbGJ4"
-CHAT_ID = "7837817666"
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8737624173:AAHNEb0nmuGLFZbypfIlpQWfyZ8KzeFbGJ4")
+CHAT_ID = os.getenv("CHAT_ID", "7837817666")
 
 # ===== BINANCE TESTNET API ТОХИРГОО =====
-BINANCE_API_KEY = "NgEoaa7VidwUR2oksfcnTRFks6z4UDPb3DHJVLQwF51kybrPdgOEk1X9G13jbia8"
-BINANCE_SECRET_KEY = "ehStKDxkD192VKyOmYFn4f1VVu7RNMZ6BDGqqRYNiVez4HZSVS9EcI2KXdhrsaFjY"
+BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "NgEoaa7VidwUR2oksfcnTRFks6z4UDPb3DHJVLQwF51kybrPdgOEk1X9G13jbia8")
+BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY", "ehStKDxkD192VKyOmYFn4f1VVu7RNMZ6BDGqqRYNiVez4HZSVS9EcI2KXdhrsaFjY")
 
 # Нэг арилжаанд орох дүнг энд тохируулна ($)
 TRADE_USDT_AMOUNT = 20
 
-client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY)
-# Binance Testnet сервер рүү холбох хаяг:
-client.API_URL = 'https://testnet.binance.vision/api'
+# Binance Testnet клиент үүсгэх (testnet=True тохиргоо)
+client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY, testnet=True)
 
 def send_telegram_msg(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
