@@ -5,27 +5,22 @@ import pandas as pd
 import requests
 from binance.client import Client
 
-# ===== TELEGRAM ТОХИРГОО (Railway-ийн Variables-аас уншина) =====
+# ===== TELEGRAM ТОХИРГОО =====
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8737624173:AAHNEb0nmuGLFZbypfIlpQWfyZ8KzeFbGJ4")
 CHAT_ID = os.getenv("CHAT_ID", "7837817666")
 
-# ===== BINANCE TESTNET API ТОХИРГОО (Railway-ийн Variables-аас уншина) =====
+# ===== BINANCE TESTNET API ТОХИРГОО =====
 BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "En7fAi4G1xQFG17arU3weWgk8ejn2E8LxU4mMnF9oypYpFyno5nRLUJDTJ38GbYh")
 BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY", "sVFIXH6Ma0FKTx0MC5kurhltf3Lok0PZyD2OgY0w6Xa4VDGJhfgdZzkf0KZzgo7o")
 
-# Нэг арилжаанд орох дүнг энд тохируулна ($)
 TRADE_USDT_AMOUNT = 20
 
-# Binance Testnet клиент үүсгэх (testnet=True тохиргоо)
+# Binance Testnet Client
 client = Client(BINANCE_API_KEY, BINANCE_SECRET_KEY, testnet=True)
 
 def send_telegram_msg(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    payload = {
-        "chat_id": CHAT_ID,
-        "text": msg,
-        "parse_mode": "Markdown"
-    }
+    payload = {"chat_id": CHAT_ID, "text": msg, "parse_mode": "Markdown"}
     try:
         requests.post(url, json=payload, timeout=5)
     except Exception as e:
@@ -35,18 +30,16 @@ def fmt(val):
     return f"{val:.4f}" if val < 10 else f"{val:.2f}"
 
 class RobustAutoSMCBot:
-    def __init__(self, symbols=["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "AVAXUSDT", "NEARUSDT"], interval="15m"):
+    def __init__(self, symbols=["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "AVAXUSDT", "NEARUSDT"], interval="1h"):
         self.symbols = symbols
         self.interval = interval
         self.last_signal_time = {}
 
     def round_step(self, value, step_size):
-        """Binance-ийн зөвшөөрөх бутархайн оронгийн дагуу дугуйлах"""
         precision = int(round(-math.log10(float(step_size))))
         return round(value, precision)
 
     def get_symbol_info(self, symbol):
-        """Хосын оронгийн нарийвчлалыг татах"""
         try:
             info = client.get_symbol_info(symbol)
             lot_size = next(f for f in info['filters'] if f['filterType'] == 'LOT_SIZE')
@@ -84,10 +77,7 @@ class RobustAutoSMCBot:
             raw_qty = TRADE_USDT_AMOUNT / entry_price
             quantity = self.round_step(raw_qty, step_size)
 
-            buy_order = client.order_market_buy(
-                symbol=symbol,
-                quantity=quantity
-            )
+            buy_order = client.order_market_buy(symbol=symbol, quantity=quantity)
             executed_qty = float(buy_order['executedQty'])
 
             if executed_qty == 0:
@@ -97,12 +87,7 @@ class RobustAutoSMCBot:
             stop_loss_price = self.round_step(stop_loss, tick_size)
             take_profit_price = self.round_step(take_profit, tick_size)
 
-            client.order_limit_sell(
-                symbol=symbol,
-                quantity=executed_qty,
-                price=str(take_profit_price)
-            )
-
+            client.order_limit_sell(symbol=symbol, quantity=executed_qty, price=str(take_profit_price))
             client.create_order(
                 symbol=symbol,
                 side='SELL',
@@ -114,24 +99,24 @@ class RobustAutoSMCBot:
             )
 
             msg = (
-                f"⚡ *ТЕСТНЕТ АРИЛЖАА АМЖИЛТТАЙ НЭЭГДЛЭЭ ({symbol})*\n\n"
+                f"⚡ *1H ТЕСТНЕТ АРИЛЖАА НЭЭГДЛЭЭ ({symbol})*\n\n"
                 f"💵 *Ашигласан дүн:* {TRADE_USDT_AMOUNT}$\n"
                 f"📦 *Авсан хэмжээ:* {executed_qty}\n"
                 f"🎯 *Entry:* `{fmt(entry_price)}`\n"
                 f"🛑 *Stop Loss:* `{fmt(stop_loss_price)}`\n"
                 f"🎯 *Take Profit:* `{fmt(take_profit_price)}`\n\n"
-                f"🛡️ *Байршуулсан:* SL болон TP захиалгууд Binance Testnet дээр бэлэн байна."
+                f"🛡️ *Байршуулсан:* SL болон TP захиалгууд бэлэн байна."
             )
             send_telegram_msg(msg)
 
         except Exception as e:
-            err_msg = f"❌ *{symbol} Арилжаа нээхэд алдаа гарлаа:* {str(e)}"
+            err_msg = f"❌ *{symbol} 1h Арилжаа нээхэд алдаа гарлаа:* {str(e)}"
             send_telegram_msg(err_msg)
             print(err_msg)
 
     def run(self):
-        print("🤖 Binance Testnet SMC Бот ажиллаж байна...")
-        send_telegram_msg("🚀 *ТЕСТНЕТ АВТОМАТ БОТ ЭХЭЛЛЭЭ*\nБинанс туршилтын сервер дээр арилжааг автоматаар шалгаж эхэллээ.")
+        print("🤖 Binance Testnet SMC 1h Бот ажиллаж байна...")
+        send_telegram_msg("🚀 *1H ТЕСТНЕТ БОТ ЭХЭЛЛЭЭ*\nБинанс туршилтын сервер дээр 1 цагийн арилжааг шалгаж эхэллээ.")
 
         while True:
             for symbol in self.symbols:
@@ -140,7 +125,6 @@ class RobustAutoSMCBot:
                     continue
 
                 df['Swing_Low'] = (df['Low'] < df['Low'].shift(1)) & (df['Low'] < df['Low'].shift(-1))
-                
                 sub_df = df.iloc[-51:-1].copy()
                 curr_candle = df.iloc[-1]
 
@@ -177,7 +161,7 @@ class RobustAutoSMCBot:
                     now = curr_candle['Time']
                     if symbol in self.last_signal_time:
                         time_diff = (now - self.last_signal_time[symbol]).total_seconds() / 60
-                        if time_diff < 60:
+                        if time_diff < 180:
                             continue
 
                     self.last_signal_time[symbol] = now
@@ -191,8 +175,8 @@ class RobustAutoSMCBot:
 
                     self.execute_safe_trade(symbol, entry_price, stop_loss, take_profit)
 
-            time.sleep(900)
+            time.sleep(3600) # 1 цаг (3600 сек) тутамд шалгана
 
 if __name__ == "__main__":
-    bot = RobustAutoSMCBot()
+    bot = RobustAutoSMCBot(interval="1h")
     bot.run()
