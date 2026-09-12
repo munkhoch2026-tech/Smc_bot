@@ -8,8 +8,8 @@ import pandas as pd
 import requests
 
 # ===== TELEGRAM ТОХИРГОО =====
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8737624173:AAHNEb0nmuGLFZbypfIlpQWfyZ8KzeFbGJ4")
-CHAT_ID = os.getenv("CHAT_ID", "7837817666")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8737624173:AAHNEb0nmuGLFZbypfIlpQWfyZ8KzeFbGJ4").strip()
+CHAT_ID = os.getenv("CHAT_ID", "7837817666").strip()
 
 # ===== BINANCE SPOT TESTNET API ТОХИРГОО =====
 BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "En7fAi4G1xQFG17arU3weWgk8ejn2E8LxU4mMnF9oypYpFyno5nRLUJDTJ38GbYh").strip()
@@ -198,8 +198,8 @@ class RobustAutoSMCBot:
                 if curr_candle['Low'] <= ote_high and curr_candle['High'] >= ote_low:
                     now = curr_candle['Time']
                     if symbol in self.last_signal_time:
-                        time_diff = (now - self.last_signal_time[symbol]).total_seconds() / 60
-                        if time_diff < 180:
+                        time_diff = (now - self.last_signal_time[symbol]).total_seconds() / 3600
+                        if time_diff < 1:
                             continue
 
                     self.last_signal_time[symbol] = now
