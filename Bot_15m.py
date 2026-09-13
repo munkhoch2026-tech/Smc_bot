@@ -102,15 +102,22 @@ class SMC15mSignalBot:
                     risk = entry_price - stop_loss
                     if risk <= 0:
                         continue
-                    take_profit = entry_price + (risk * 3)
+                                        tp1 = entry_price + (risk * 1.5)
+                    tp2 = entry_price + (risk * 3.0)
+                    tp3 = entry_price + (risk * 5.0)
 
                     msg = (
                         f"🎯 *SMC 15M СИГНАЛ ОЛДЛОО ({symbol})*\n\n"
                         f"📥 *Entry (Орох бүс):* `{fmt(entry_price)}`\n"
-                        f"🛑 *Stop Loss:* `{fmt(stop_loss)}`\n"
-                        f"🎯 *Take Profit (1:3):* `{fmt(take_profit)}`\n\n"
-                        f"💡 *Тайлбар:* Swing low sweep болон OTE бүсэд үнэ хүрлээ."
+                        f"🛑 *Stop Loss:* `{fmt(stop_loss)}`\n\n"
+                        f"🥇 *TP1 (1:1.5):* `{fmt(tp1)}`\n"
+                        f"🥈 *TP2 (1:3.0):* `{fmt(tp2)}`\n"
+                        f"🥉 *TP3 (1:5.0):* `{fmt(tp3)}`\n\n"
+                        f"💡 *Тайлбар:* Swing low sweep болон OTE бүс."
                     )
+                    send_telegram_msg(msg)
+
+                    
                     send_telegram_msg(msg)
 
             time.sleep(900)
