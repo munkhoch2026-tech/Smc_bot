@@ -102,7 +102,8 @@ class SMC15mSignalBot:
                     risk = entry_price - stop_loss
                     if risk <= 0:
                         continue
-                                        tp1 = entry_price + (risk * 1.5)
+
+                    tp1 = entry_price + (risk * 1.5)
                     tp2 = entry_price + (risk * 3.0)
                     tp3 = entry_price + (risk * 5.0)
 
@@ -115,9 +116,6 @@ class SMC15mSignalBot:
                         f"🥉 *TP3 (1:5.0):* `{fmt(tp3)}`\n\n"
                         f"💡 *Тайлбар:* Swing low sweep болон OTE бүс."
                     )
-                    send_telegram_msg(msg)
-
-                    
                     send_telegram_msg(msg)
 
             time.sleep(900)
