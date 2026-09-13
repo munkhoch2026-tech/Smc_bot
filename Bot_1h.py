@@ -8,12 +8,12 @@ import pandas as pd
 import requests
 
 # ===== TELEGRAM ТОХИРГОО =====
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "8737624173:AAHNEb0nmuGLFZbypfIlpQWfyZ8KzeFbGJ4").strip()
-CHAT_ID = os.getenv("CHAT_ID", "7837817666").strip()
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "").strip()
+CHAT_ID = os.getenv("CHAT_ID", "").strip()
 
 # ===== BINANCE SPOT TESTNET API ТОХИРГОО =====
-BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "En7fAi4G1xQFG17arU3weWgk8ejn2E8LxU4mMnF9oypYpFyno5nRLUJDTJ38GbYh").strip()
-BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY", "sVFIXH6Ma0FKTx0MC5kurhltf3Lok0PZyD2OgY0w6Xa4VDGJhfgdZzkf0KZzgo7o").strip()
+BINANCE_API_KEY = os.getenv("BINANCE_API_KEY", "").strip()
+BINANCE_SECRET_KEY = os.getenv("BINANCE_SECRET_KEY", "").strip()
 
 BASE_URL = "https://testnet.binance.vision"
 TRADE_USDT_AMOUNT = 20
